@@ -1,14 +1,14 @@
 tf入门
 
 计算图
-import tensorf low as tf
+import tensorflow as tf
 a = tf.constant([1.0, 2.0], name =”a ”)
 b = tf.constant([2.0, 3.0], name =”b ”)
 result = a + b
 Tensor Flow 会自动将定义的计算转化为计算图上的节点。在TensorFlow 程序中，系统会自
 动维护一个默认的计算图，通过tf.get_default_graph 函数可以获取当前默认的计算图。
 
-g1 = tf.Graph()#持通过tf.Graph 函数来生成新的计算图。不同计算图上的张量和运算都不会共享
+g1 = tf.Graph()#通过tf.Graph函数来生成新的计算图。不同计算图上的张量和运算都不会共享
 with g1.as_default():
 	#在计算图g1中定义变量v并设置初始值为0
 	v = tf.get_variable(
@@ -38,7 +38,7 @@ with tf.Session(graph=g2) as sess:
 
 import tensorflow as tf
 # tf.constant 是一个计算，这个计算的结果为一个张量， 保存在变量a 中。
-a= tf.constant([1.0, 2 . 0] , name =” a ”)
+a= tf.constant([1.0, 2.0] , name =” a ”)
 b = tf.constant( [2 . 0 , 3 . 0] , name = ” b ”)
 result = tf.add( a , b , name=” add ”)#创建add节点
 print result
@@ -127,8 +127,8 @@ sess.run(init_op)
 tf.assign(wl , w2 , validate shape=False)
 
 运用placeholder动态提供输入数据
-
-import tensorf low as tf
+计算图是一种预先定义最后才进行计算的结构，这里我们先定义w1，w2，x，但都不赋值，在最后才注册并把x作为字典变量输入计算出结果
+import tensorflow as tf
 wl = tf.Variable(tf.random normal([2 , 3], stddev=l ))
 w2 = tf.Variable(tf.random normal([3, 1], stddev=l))
 ＃定义placeholder 作为存放输入数据的地方。这里维度也不一定要定义。
@@ -140,23 +140,25 @@ y = tf.matmul(a,w2)
 sess = tf.Session()
 init_op = tf.global_variables_initializer()
 sess.run(init_op)
-print(sess.run(y , feed_ dict={x: [[0.7,0.9]]}))#输入x的数值
-batch输入同样，只要扩大x的维度即可
+print(sess.run(y , feed_dict={x: [[0.7,0.9]]}))#输入x的数值
+batch输入同样，只要扩大x的维度即可shape=(3,2) feed dict={x : [[0 . 7 , 0 . 9), [0 . 1 , 0 . 4] , [0.5 , 0 . 8]]}))
 
 反向传播
 ＃使用sigmoid 函数将y 转换为0 ～ 1 之间的数值。转换后y 代表预测是正样本的概率， 1-y 代表
 ＃预测是负样本的概率。
-y=tf.sigmoid(y )
+y=tf.sigmoid(y)
 ＃定义损失函数来刻画预测值与真实值得差距。
-cross_entropy = ’ tf.reduce_ mean(
-y_ * tf.l 。g(tf.clip_by_value(y , le-10, 1.0))
-+(1-y)*tf.log(tf.clip_by_value (l-y , le-10, 1 .0)))
-＃定义学习率，在第4 章中将更加具体的介绍学习率。
+cross_entropy = tf.reduce_ mean(
+y_ * tf.log(tf.clip_by_value(y , 1e-10, 1.0))
++(1-y)*tf.log(tf.clip_by_value (l-y , 1e-10, 1.0)))
+#定义学习率，在第4 章中将更加具体的介绍学习率。
 learning_rate = 0.001
-＃定义反向传播算法来优化神经网络中的参数。
+#反向传播优化方法
 train step =\
-tf.train.AdamOptimizer(learning_rate) .minimize (cross_entropy)
-
+	tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy)
+#常用优化方法tf.train.GradientDescentOptimizer 、tf.train.AdamOptimizer 和
+#tf.train.MomentumOptimizer
+sess.run(step)
 
 完整的神经网络
 import tensorflow as tf
@@ -168,7 +170,7 @@ w1 = tf.Variable(tf.random_normal([2,3],stddev=1,seed=1))
 w2 = tf.Variable(tf.random_normal([3,1],stddev=1,seed=1))
 
 x = tf.palceholder(tf.float32,shape=(None,2),name='x-input')
-y_ = tf.placeholder(tf.float32,shape=(None,2),name='y-input')
+y_ = tf.placeholder(tf.float32,shape=(None,2),name='y-exam')
 
 a = tf.matmul(x,w1)
 y = tf.matmul(a,w2)
@@ -179,27 +181,29 @@ learningrate = 0.001
 cross entropy= -tf.reduce mean(
 	y * tf.log(tf.clip by value(y , le- 10 , 1.0))
 	+(1-y)*tf.log(tf.clip_by_value ( l - y , le - 10 , 1.0 )))
-train_step = tf.train.AdamOptimizer(0.001).minimize(cross_entropy)
+train_step = tf.train.AdamOptimizer(learning_rate).minimize(cross_entropy)
 
 #通过随机数生成一个模拟数据集。
-rdm = RandomState(l)
+rdm = RandomState(l)#RandomState是一个预载的生成随机张量的类，通过实例化可以生成各种随机张量，比如rdm.rand(2,3),rdm.randint(2,2)
 dataset_size = 128
-X = rdm.rand(dataset size , 2 )
+X = rdm.rand(dataset_size, 2)#生成128行的输入数据
 Y = [ [int(xl+x2 < 1)) for (xl , x2 ) in X)
+#先取x1+x2小于1的样本，记为1，意味着合格的零件，Y就是一个128长度[0,0,1,1....]的列表，记载着每个零件的合格与否
 
 with tf.Session() as sess:
 	init_op = tf.global_variables_initializer()
-	sess.run(init_op)#初始化参数
+	sess.run(init_op)#初始化所有参数
 
 STEPS = 5000
 for i in range(STEPS):
-	start = ( i * batch size ） 告dataset size
-	end = min (start+batch size , dataset size )
+#这里每次选取8个样本进行学习(0,8)(8,16)(16,24)....(120,128)
+	start = (i * batch_size ) % dataset_size#从0开始
+	end = min(start+batch_size , dataset_size )#从8开始
 
-sess.run(train_step,feed_dict={x : X[start : end), y : Y[start : end ) })
-if i % 1000 == 0 
-	total_cross_entropy = sess.run(cross entropy , feed dict={x : X, y : Y})
-
+	sess.run(train_step,feed_dict={x : X[start : end), y : Y[start : end ) })
+	if i % 1000 == 0 #每隔一定计算loss
+		total_cross_entropy = sess.run(cross_entropy , feed_dict={x : X, y : Y})
+	print("after %d iterations,loss is %g", (%i,%total_cross_entropy))
 
 
 

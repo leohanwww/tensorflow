@@ -44,7 +44,7 @@ y = tf.matmul(x,w1)
 
 loss_less = 10
 loss_more = 1
-loss = tf.reduce_sum(tf.whers(tf.greater(y,y_),(y - y_)*loss_more,(y_ - y)*loss_less))
+loss = tf.reduce_sum(tf.where(tf.greater(y,y_),(y - y_)*loss_more,(y_ - y)*loss_less))
 train_step= tf.train.AdamOptimizer(0.001).minimize(loss)
 
 

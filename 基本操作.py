@@ -49,7 +49,7 @@ py_binary(#程序主入口编译为binary二进制
 
 安装tensorflow
 docker安装
-docker run -it tensorflow/tensorflow:l.4.0
+docker run -it tensorflow/tensorflow:1.4.0
 
 pip安装		
 linux	找到安装包，安装
