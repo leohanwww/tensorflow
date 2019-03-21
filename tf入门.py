@@ -170,11 +170,10 @@ w1 = tf.Variable(tf.random_normal([2,3],stddev=1,seed=1))
 w2 = tf.Variable(tf.random_normal([3,1],stddev=1,seed=1))
 
 x = tf.palceholder(tf.float32,shape=(None,2),name='x-input')
-y_ = tf.placeholder(tf.float32,shape=(None,2),name='y-exam')
+y_ = tf.placeholder(tf.float32,shape=(None,1),name='y-exam')
 
 a = tf.matmul(x,w1)
 y = tf.matmul(a,w2)
-
 y = tf.sigmoid(y)#使用sigmoid 函数将y 转换为0 ～ 1 之间的数值。转换后y 代表预测是正样本的概率
 learningrate = 0.001
 
@@ -202,7 +201,7 @@ for i in range(STEPS):
 
 	sess.run(train_step,feed_dict={x : X[start : end), y : Y[start : end ) })
 	if i % 1000 == 0 #每隔一定计算loss
-		total_cross_entropy = sess.run(cross_entropy , feed_dict={x : X, y : Y})
+		total_cross_entropy = sess.run(cross_entropy , feed_dict={x : X, y_ : Y})
 	print("after %d iterations,loss is %g", (%i,%total_cross_entropy))
 
 
