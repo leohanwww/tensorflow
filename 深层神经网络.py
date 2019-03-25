@@ -99,33 +99,37 @@ learning_rate = tf.train.exponential_decay(0.1, global_step, 100, 0.96, staircas
 #指定初始学习率为0.1，每训练100轮后学习率乘以0.96
 train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step)
 
+避免过拟合
+w = tf.Variable(tf.random_normal([2,1],stddev=1,seed=1))
+y = tf.matmul(x,w)
+loss = tf.reduce_mean(tf.square(y_ - y)) + tf.contrib.layers.l2_regularizer(lambda)(w)#带正则化的损失函数
 
+#获取一层神经网络的权重，并将这个权重的L2正则化加入集合
+def get_weight(shape,lambda):
+	var = tf.Variable(tf.random_normal(shape),dtype=tf.float32)
+	tf.add_to_collection('losses',tf.contrib.layers.l2_regularizer(lambda)(var))
+	return var
 
+x = tf.placeholder(tf.float32,shape=(None,2))
+y_ = tf.placeholder(tf.float32,shape=(None,1))
+batch_size = 8
+#定义每层神经元个数
+layer_dimension = [2,10,10,10,1]
+layers_lenth = len(layer_dimension)
+cur_layer = x
+in_dimension = layer_dimension[0]
 
+for i in(1,layers_lenth):
+	out_dimension = layer_dimension[i]#构建下一个函数的参数
+	weight = get_weight((in_dimension,out_dimension),0.001)
+#获得权重
+	b = tf.constant(0.1,shape=[out_dimension])
+	cur_layer = tf.nn.relu(tf.matmul(cur_layer,weight) + b)
+	in_dimension = layer_dimension[1]
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+mse_loss = tf.reduce_mean(tf.square(y_ - cur_layer))
+tf.add_to_collection('losses',mse_loss)#将本次loss加入losses集合里
+loss = tf.add_n(tf.get_collection('losses'))#将所有loss相加
 
 
 
