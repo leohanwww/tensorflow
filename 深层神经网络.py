@@ -131,26 +131,32 @@ mse_loss = tf.reduce_mean(tf.square(y_ - cur_layer))
 tf.add_to_collection('losses',mse_loss)#将本次loss加入losses集合里
 loss = tf.add_n(tf.get_collection('losses'))#将所有loss相加
 
+滑动平均模型
+使得模型在测试数据上更加健壮robust
+v1 = tf.Variable(0, dtype=tf.float32)
+step = tf.Variable(0, trainable=False)#迭代轮数
+#滑动平均的类，参数是衰减率和动态控制衰减率的变量
+ema = tf.train.ExponentialMovingAverage(0.99, step)
+#定义一个列表，里面保存更新平滑平均的操作
+maintain_averages_op = ema.apply([v1])
 
+with tf.Session() as sess:
+	init_op = tf.global_variables_initializer()
+	sess.run(init_op)
 
+print(sess.run([v1,ema.average(v1)]))
+>>>[0.0, 0.0]#初始都为0
 
+sess.run(tf.assign(v1, 5))#更新v1的值为5
+sess.run(maintain_averages_op)
+sess.run([v1, ema.average(v1)])
+>>>[5.0, 4.5]#v1和它的滑动平均值
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+sess.run(tf.assign(step,10000))
+sess.run(tf.assign(v1,10))
+sess.run(maintain_averages_op)
+sess.run([v1, ema.average(v1)])
+>>>[10.0, 4.5549998]
 
 
 
