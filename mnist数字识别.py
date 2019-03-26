@@ -1,0 +1,247 @@
+数字识别
+
+#加载MNIST数据集
+from tensorflow.examples.tutorials.mnist import input_data
+
+#载入数据集，设置保存文件夹
+mnist = input_data.read_data_sets("d:/tensorflow",one_hot=True)
+
+print("train data size:", mnist.train.num_examples)
+
+print("Validating data size:", mnist.validation.num_examples)
+
+print("Test data size:", mnist.test.num_examples)
+
+print("Example training data:", mnist.train.images[0])
+
+print("Example training data label:", mnist.train.labels[0])
+
+
+tensorflow完整程序训练神经网络
+
+import trnsorflow as tf
+from tensorflow.examples.tutorials.mnist import input_data
+
+INPUT_NODE = 784 #输入层的节点数
+OUTPUT_NODE = 10 #输出层的节点数
+
+LAYER1_NODE = 500 #一个隐藏层，有500节点
+BATCH_SIZE= 100
+
+LEARNING_RATE_BASE = 0.8 #基础学习率
+LEARNING_RATE_DECAY = 0.99 #学习率的衰减
+REGULARIZATION = 0.0001 #描述模型复杂度的正则化在损失函数中的系数
+TRAIN_STEPS = 30000
+MOVING_AVERAGE_DECAY = 0.99 #滑动平均衰减率
+
+#辅助函数，给定所有参数，返回正向传播的结果，使用了滑动平均模型
+def inference(input_tensor, avg_class, weights1, biases1, weights2, biases2):
+	if avg_class = None:
+		layer1 = tf.nn.relu(tf.matmul(input_tensor, weights1) + biases1)
+		return tf.matmul(layer1, weight2) + biases2
+
+	else:#使用滑动平均衰减率
+		layer1 = tf.nn.relu(tf.matmul(input_tensor, avg_class.average(weights1)) + avg_class.average(biases1))
+		return tf.matmul(layer1, avg_class.average(weights2)) + avg_class.average(biases2)
+
+def train(mnist):
+	x = tf.placeholder(tf.float32, [None,INPUT_NODE],name='x-input')
+	y_ = tf.placeholder(tf.float32,[None,OUTPUT_NODE],name='y-input')
+	weights1 = tf.Variable(tf.truncated_normal(INPUT_NODE,LAYER1_NODE),stddev=0.1)
+	biases1 = tf.Variable(tf.constant(0.1,shape=[LAYER1_NODE]))
+	weights2 = tf.Variable(tf.truncate_normal(LAYER1_NODE,OUTPUT_NODE),stddev=0.1)
+	biases2 = tf.Variable(tf.constant(0.1,shape=[OUTPUT_NODE]))
+	y = inference(x, None, weights1, biases1, weights2, biases2)
+
+	global_step = tf.Variable(0, trainable=False)#训练轮数
+	variable_averages = tf.train.ExponentiaMovingAverage(MOVING_AVERAGE_DECAY,global_step)#滑动平均类实例化
+	
+	variable_averages_op = variable_averages.apply(tf.train_variables())
+	#在所有可训练参数上使用滑动平均
+	average_y = inference(x, variable_averages, weights1, biases1, weights2, biases2)#前向计算
+
+	#交叉嫡损失函数
+	cross_entropy = tf.nn.sparse_softmax_with_logits(logits=y, labels=tf.argmax(y_,1))#1代表只在第一个维度，即每行取最大值的下标
+	cross_entropy_mean = tf.reduce_mean(cross_entropy)
+	#L2正则化损失函数
+	regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RETE)
+	#正则化损失
+	regularization = regularizer(weights1) + regularizer(weights2)
+	loss = cross_entropy_mean + regularization#总损失
+
+	learning_rate = tf.train.exponential_decay(#指数衰减学习率
+		LEARNING_RATE_BASE,#基础学习率
+		global_step,#当前迭代轮数
+		mnist.train.num_examples / BATCH_SIZE, #所有训练数据学完需要的迭代次数
+		LEARNING_RATE_DECAY #学习衰减率
+
+
+train_step = tf.train.GradientDecentOptimizer(learning_rate).minimize(loss,global_step=global_step)#优化损失函数
+#每过一遍数据要通过反向传播更新参数值
+#也要平滑计算参数
+#train_op = tf.group(train_step,variable_averages_op)和下面一样效果
+with tf.control_dependencies([train_step,variable_averages_op]):
+	train_op = tf.no_op(name='train')
+
+correct_prediction = tf.equal(tf.argmx(average_y,1), tf.argmax(y_, 1))
+#检验滑动平均模型前向传播结果正确,结果是一个batch_size的一维数组
+accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
+#将布尔型转换为实数型，计算均值
+
+with tf.Session() as sess:
+	tf.global_variable_initializer().run
+	validate_feed = {#验证数据
+		x: mnist.validation.images,
+		y_: mnist.validation.labels
+	}
+
+	test_feed = {
+		x: mnist.test.images,
+		y_: mnist.test.labels
+	}
+
+	for i in range(TRAINING_STEPS):
+		if i % 1000 == 0
+			validate_acc = sess.run(accuracy, feed_dict=validate_feed)
+			print('after %d training steps, validation accuracy using average model is %g' % (i, validate_acc))
+		#产生这一轮使用的一个batch的训练数据，并进行训练
+		xs,ys = mnist.train.next_batch(BATCH_SIZE)
+		sess.run(train_op, feed_dict={x:xs, y_:ys})
+	#训练结束后，在测试数据是检测最终正确率
+	test_acc = sess.run(accuracy, feed_dict=test_feed)
+	print('arter %d training steps, test accuracy using average model is %g' % (TRAINING_STEPS, test_acc))
+
+def main():
+	mnist = input_data.read_data_sets("d:/tensorflow", one_hot=True)
+	train(mnist)
+
+if __name__ == '__main__'
+	tf.app.run()
+
+变量管理
+
+tf.Variable和tf.get_variable一样
+tf.Variable(tf.constant(0.1,shape=[1]),name='v')
+tf.get_variable("v",shape=[1],initializer=tf.constant_initilizer(1.0))
+
+tf.get_variable里的参数
+initializer=tf.constant_initilizer 常量
+			tf.random_normal_initializer 正态分布随机变量
+			tf.truncate_normal_initializer 在标准差内的正态分布
+			tf.random_uniform_initilizer 平均分布的随机值
+			tf.uniform_unit_scaling_initilazer 
+			tf.zeros_initilizer 全为0
+			tf.ones.initilizer 全为1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
