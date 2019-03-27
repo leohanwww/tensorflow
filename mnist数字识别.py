@@ -125,6 +125,7 @@ tf.Variable(tf.constant(0.1,shape=[1]),name='v')
 tf.get_variable("v",shape=[1],initializer=tf.constant_initilizer(1.0))
 
 tf.get_variable里的参数
+变量名称必填
 initializer=tf.constant_initilizer 常量
 			tf.random_normal_initializer 正态分布随机变量
 			tf.truncate_normal_initializer 在标准差内的正态分布
@@ -133,44 +134,67 @@ initializer=tf.constant_initilizer 常量
 			tf.zeros_initilizer 全为0
 			tf.ones.initilizer 全为1
 
+with tf.variable_scope('foo'):#在命名空间里创建变量
+	tf.get_variable('v',[1],initializer=tf.constant_initializer(1.0))
+with tf.variable_scope('foo',reuse=True):#使用reuse只能获得已经存在变量
+	tf.get_variable('v',[1])
+
+v1 = tf.variable('v',[1])
+print v1.name #v:0
+with tf.variable_scope('foo')
+	v2 = tf.get_variable('v',[1])
+	print v2.name #foo/v:0
+v3 = tf.get_variable('foo/v',[1])
+print v3.name #/foo/v:0
+v3 == v2 #True
+
+def inference(input_tensor,reuse=False):
+	
+	with tf.variable_scope('layer1',reuse=reuse):#根据函数传进来的reuse决定是否创建新变量
+		weights = tf.get_variable('weights',[INPUT_NODE,LAYER1_NODE],initializer=tf.truncate_normal_initializer(stddev=0.1))
+		biases = tf.get_variable('biases',[LAYER1_NODE],initializer=tf.truncate_normal_initializer(stddev=0.0))
+		layer1 = tf.nn.relu(tf.matmul(input_tensor,weights)+biases)
+
+	with tf.variable_scope('layer2',reuse=reuse):
+		weights = tf.get_variable('weights',[LAYER1_NODE,OUTPUT_NODE],initializer=tf.truncate_normal_initializer(stddev=0.1))
+		biases = tf.get_variable('biases',[OUTPUT_NODE],initializer=tf.truncate_normal_initializer(0.0))
+		layer2 = tf.matmul(layer1,weights)+biases
+	return layer2
+
+x = tf.placeholder(tf.float32,[NONE,INPUT_NODE],name='x-input')
+y = inference(x)
+#重新推导直接用新的参数调用
+new_x = ......
+y = inference(new_x,True)
 
 
+保存模型
+vl = tf.variable(tf.constant(l.0 , shape=[l]), name = ” vl ”)
+v2 = tf .variable(tf.constant(2 . 0 , shape=[l]) , name= ” v2 ”)
+result = vl + v2
+init_op = tf.global_variable_initializer()
+saver = tf.train.Saver()
+with tf.Session() as sess:
+	sess.run(init_op)
+	saver.save(sess,"/path/to/model/model.ckpt")
+#加载模型
+with tf.Session() as sess:
+	sess.restore(sess,'/path/to/model/model.ckpt')
+	print(sess.run(result))
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+'''
+#直接加载图
+saver = tf.train.import_meta_graph('/path/to/model/model.ckpt/model.ckpt.meta')
+with tf.Session():
+	saver.restore(sess,'/path/to/model/model.ckpt')
+	print(sess.run(tf.get_default_graph().get_tensor_by_name('add:0')))
+'''
+vl = tf.Variable(tf.constant(l.0 , shape=[l]) , name=” other-vl ”)
+v2 = tf . Variable(tf.constant(2 . 0 , shape=[l]) , name = ” other-v2 ”)
+#使用一个字典来重命名变量可以就可以加载原来的榄型了。这个字典指定了
+#原来名称为vl 的变量现在加载到变量vl 中（名称为other-v1 ），名称为v2 的变后
+#加载到变量v2 中〈名称为other-v2 ）。
+saver= tf . train.Saver ({ ” vl ”: vl ,”v2 ”: v2})
 
 
 
