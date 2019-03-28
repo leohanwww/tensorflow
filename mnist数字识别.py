@@ -7,15 +7,15 @@ from tensorflow.examples.tutorials.mnist import input_data
 mnist = input_data.read_data_sets("d:/tensorflow",one_hot=True)
 
 print("train data size:", mnist.train.num_examples)
-
+55000
 print("Validating data size:", mnist.validation.num_examples)
-
+5000
 print("Test data size:", mnist.test.num_examples)
-
+10000
 print("Example training data:", mnist.train.images[0])
-
+[ 0 . 0 . 0 . 0 . 380 0 . 376 .. 0. ）
 print("Example training data label:", mnist.train.labels[0])
-
+[ 0. 0. 0. 0. 0 . 0 . 0 . 1. 0 . 0]
 
 tensorflow完整程序训练神经网络
 
@@ -194,7 +194,7 @@ v2 = tf . Variable(tf.constant(2 . 0 , shape=[l]) , name = ” other-v2 ”)
 #使用一个字典来重命名变量可以就可以加载原来的榄型了。这个字典指定了
 #原来名称为vl 的变量现在加载到变量vl 中（名称为other-v1 ），名称为v2 的变后
 #加载到变量v2 中〈名称为other-v2 ）。
-saver= tf . train.Saver ({ ” vl ”: vl ,”v2 ”: v2})
+saver= tf.train.Saver ({ ” vl ”: vl ,”v2 ”: v2})
 
 
 
