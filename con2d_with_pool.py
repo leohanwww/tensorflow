@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 Created on Thu Mar 28 16:44:09 2019
-
+mulity_conv2d_layer
 @author: zhanghan
 """
 
@@ -30,9 +30,10 @@ def bias_variable(shape):
     return tf.Variable(init_bias)
 
 #前向推导
+x_image = tf.reshape(x,[-1,28,28,1])
 W_conv1 = weight_variable([5,5,1,32])
 b_conv1 = bias_variable([32])
-x_image = tf.reshape(x,[-1,28,28,1])
+
 
 h_conv1 = tf.nn.relu(con2d(x_image,W_conv1) + b_conv1)
 h_pool = pool(h_conv1)
@@ -57,7 +58,7 @@ h_fc1_drop = tf.nn.dropout(h_fc1, keep_prob)
 #输出层
 W_fc2 = weight_variable([1024,10])
 b_fc2 = bias_variable([10])
-y_conv = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2))
+y_conv = tf.nn.softmax(tf.matmul(h_fc1_drop, W_fc2) + b_fc2)
 
 #训练和评估
 cross_entropy = -tf.reduce_sum(y_ * tf.log(y_conv))
