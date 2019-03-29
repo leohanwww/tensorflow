@@ -13,7 +13,7 @@ print("Validating data size:", mnist.validation.num_examples)
 print("Test data size:", mnist.test.num_examples)
 10000
 print("Example training data:", mnist.train.images[0])
-[ 0 . 0 . 0 . 0 . 380 0 . 376 .. 0. ）
+[ 0 . 0 . 0 . 0 . 0.380  0.376 0. ）#数字代表颜色深度
 print("Example training data label:", mnist.train.labels[0])
 [ 0. 0. 0. 0. 0 . 0 . 0 . 1. 0 . 0]
 
@@ -121,8 +121,8 @@ if __name__ == '__main__'
 变量管理
 
 tf.Variable和tf.get_variable一样
-tf.Variable(tf.constant(0.1,shape=[1]),name='v')
-tf.get_variable("v",shape=[1],initializer=tf.constant_initilizer(1.0))
+tf.Variable(tf.constant(0.1,shape=[1]),name='v')#name不是必须
+tf.get_variable("v",shape=[1],initializer=tf.constant_initilizer(1.0))#name必须
 
 tf.get_variable里的参数
 变量名称必填
@@ -136,7 +136,7 @@ initializer=tf.constant_initilizer 常量
 
 with tf.variable_scope('foo'):#在命名空间里创建变量
 	tf.get_variable('v',[1],initializer=tf.constant_initializer(1.0))
-with tf.variable_scope('foo',reuse=True):#使用reuse只能获得已经存在变量
+with tf.variable_scope('foo',reuse=True):#使用reuse只能获得已经存在变量，想新获得一个不存在的变量会报错
 	tf.get_variable('v',[1])
 
 v1 = tf.variable('v',[1])
@@ -169,8 +169,8 @@ y = inference(new_x,True)
 
 
 保存模型
-vl = tf.variable(tf.constant(l.0 , shape=[l]), name = ” vl ”)
-v2 = tf .variable(tf.constant(2 . 0 , shape=[l]) , name= ” v2 ”)
+vl = tf.variable(tf.constant(1.0 , shape=[l]), name = ” vl ”)
+v2 = tf .variable(tf.constant(2.0 , shape=[l]) , name= ” v2 ”)
 result = vl + v2
 init_op = tf.global_variable_initializer()
 saver = tf.train.Saver()
@@ -189,37 +189,63 @@ with tf.Session():
 	saver.restore(sess,'/path/to/model/model.ckpt')
 	print(sess.run(tf.get_default_graph().get_tensor_by_name('add:0')))
 '''
-vl = tf.Variable(tf.constant(l.0 , shape=[l]) , name=” other-vl ”)
-v2 = tf . Variable(tf.constant(2 . 0 , shape=[l]) , name = ” other-v2 ”)
-#使用一个字典来重命名变量可以就可以加载原来的榄型了。这个字典指定了
-#原来名称为vl 的变量现在加载到变量vl 中（名称为other-v1 ），名称为v2 的变后
-#加载到变量v2 中〈名称为other-v2 ）。
-saver= tf.train.Saver ({ ” vl ”: vl ,”v2 ”: v2})
+#为了保存或加载部分变量
+saver = tf.train.Saver([v1])
+此时v2没有被加载，在运行初始化之前没有值
+#声明新的变量名（不在已保存的模型中）
+vl = tf.Variable(tf.constant(1.0 , shape=[l]) , name=”other-vl”)
+v2 = tf.Variable(tf.constant(2.0 , shape=[l]) , name =”other-v2”)
+#使用一个字典来重命名变量可以就可以加载原来的模型了。这个字典指定了
+#原来名称为vl 的变量现在加载到变量vl 中（名称为other-v1 ），名称为v2 的变量加载到变量v2 中〈名称为other-v2 ）
+saver= tf.train.Saver ({"vl":vl, "v2":v2})#此时保存的模型里v1变量是‘other-v1’的值
 
+import tensorflow as tf
 
+v = tf.Variable(0, dtype=tf.float32, name='v')
+for variable in tf.global_variables():
+	print variable.name
+#V:0  没有滑动平均，输出一个变量
 
+#使用滑动平均
+ema = tf.train.ExponentialMovingAverage(0.99)
+maintain_average_op = ema.apply(tf.global_variables())
+for variable in tf.global_variables():
+	print variable.name
+#输出v:0和v:/ExponentiaMovingAverage:0，后一个是影子变量
 
+saver = tf.train.Saver()
+with tf.Session() as sess:
+	init_op = tf.global_variable_initializer()
+	sess.run(init_op)
+	
+	sess.run(tf.assign(v,10))#给s一个新的值
+	sess.run(maintain_average_op)
+	saver.save(sess,'path/to/the/model/model/ckpt')#此时已经保存了v的两个值了
+	print(sess.run([v,ema.average(v)]))
+#输出[10.0, 0.99999905]
 
+v = tf.Variable(0, dtype=tf.float32, name='v')
+saver = tf.train.Saver({'v/ExponentiaMovingAverage':v})#变量重命名，将原来变量v的滑动平均值ema直接赋值给v
+with tf.Session() as sess:
+	saver.restore(sess, 'path/to/the/model/model/ckpt')
+	print(sess.run(v))
+#输出0.9999905，已经只有滑动平均值了，因为前面只使用了ema的值赋值给v
 
+使用variable_to_restore()
+import tensorflow as tf
+v = tf.Variable(O , dtype=tf.float32 , name=”v ”)
+ema = tf.train.ExponetialMovingAverage(0.99)
+#通过使用variables to restore 函数可以直接生成上面代码中提供的字典
+#｛ ” v/ExponentialMovingAverage ”： v ｝。
+#会输出：
+#{ ’ v/ExponentialMovingAverage ’: <tensorflow . Variable ’ v : 0 ’ shape=() dtype=float32 ref>}
+#其中后面的Variable 类就代表了变量v 。
+print ema.variables_to_restore ()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+saver = tf.train.Saver(ema.variables_to_restore())
+with tf.Session() as sess:
+	saver.restore(sess ,”/path/to/model/model.ckpt”)
+	print sess.run(v) #输出0.099999905 ，即原来模型中变量v 的滑动平均值。
 
 
 
