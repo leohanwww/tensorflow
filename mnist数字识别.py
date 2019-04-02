@@ -182,6 +182,16 @@ with tf.Session() as sess:
 	sess.restore(sess,'/path/to/model/model.ckpt')
 	print(sess.run(result))
 
+v1 = tf.Variable(..., name='v1')
+v2 = tf.Variable(..., name='v2')
+# Pass the variables as a dict:
+saver = tf.train.Saver({'v1': v1, 'v2': v2})
+# Or pass them as a list.
+saver = tf.train.Saver([v1, v2])
+# Passing a list is equivalent to passing a dict with the variable op names
+# as keys:
+saver = tf.train.Saver({v.op.name: v for v in [v1, v2]})
+
 '''
 #直接加载图
 saver = tf.train.import_meta_graph('/path/to/model/model.ckpt/model.ckpt.meta')
@@ -221,7 +231,7 @@ with tf.Session() as sess:
 	sess.run(tf.assign(v,10))#给s一个新的值
 	sess.run(maintain_average_op)
 	saver.save(sess,'path/to/the/model/model/ckpt')#此时已经保存了v的两个值了
-	print(sess.run([v,ema.average(v)]))
+	print(sess.run([v, ema.average(v)]))
 #输出[10.0, 0.99999905]
 
 v = tf.Variable(0, dtype=tf.float32, name='v')
@@ -233,62 +243,123 @@ with tf.Session() as sess:
 
 使用variable_to_restore()
 import tensorflow as tf
-v = tf.Variable(O , dtype=tf.float32 , name=”v ”)
+v = tf.Variable(0, dtype=tf.float32 , name=”v ”)
 ema = tf.train.ExponetialMovingAverage(0.99)
 #通过使用variables to restore 函数可以直接生成上面代码中提供的字典
 #｛ ” v/ExponentialMovingAverage ”： v ｝。
 #会输出：
 #{ ’ v/ExponentialMovingAverage ’: <tensorflow . Variable ’ v : 0 ’ shape=() dtype=float32 ref>}
 #其中后面的Variable 类就代表了变量v 。
-print ema.variables_to_restore ()
+print ema.variables_to_restore()
 
 saver = tf.train.Saver(ema.variables_to_restore())
 with tf.Session() as sess:
 	saver.restore(sess ,”/path/to/model/model.ckpt”)
 	print sess.run(v) #输出0.099999905 ，即原来模型中变量v 的滑动平均值。
 
+持久化数据格式
+元图 元图是由MetaGraphDef Protocol Buffer 定义的
+message MetaGraphDef {
+	MetainfoDef meta_info_def = 1 ;
+	
+	GraphDef graph_def = 2 ;
+	SaverDef saver_def = 3 ;
+	map<string, CollectionDef> collection_def = 4 ;
+	map<string, SignatureDef> signature_def = 5 ;
+	repeated AssetFileDef asset_file_def = 6 ;
+}
 
+v1 = tf.Variable(tf.constant(1.0, shape=[1]), name='v1')
+v2 = tf.Variable(tf.constant(1.0, shape=[1]), name='v2')
+result = v1 + v2
+saver = tf.train.Saver()
+saver.export_meta_graph('/path/to/model.ckpt.meda.json', as_text=True)
+#将上一部分保存的model.ckpt.meta计算元图导出为json文件
 
+#meta_info_def属性是通过MetalnfoDef 定义的，它记录了TensorFlow 计算图中的元数据以及TensorFlow程序中所有使用到的运算方法的信息。
+message MetainfoDef {
+	string meta_graph_version = 1;
+	OpList stripped_op_list = 2;#记录所有计算方法，每个方法只出现一次
+	google.protobuf.Any any_info = 3;
+	repeated string tags = 4;
+	string tensorflow_version = 5;
+	string tensorflow_git_version = 6;
+}
 
+#上面stripped_op_list的方法中的一种
+message OpDef {
+	string name = l ;
+	repeated ArgDef input arg = 2;
+	repeated ArgDef output_arg = 3;
+	repeated AttrDef attr = 4;
+	
+	OpDeprecation deprecation = 8;
+	string summary = 5;
+	string description = 6;
+	bool is commutative = 18;
+	bo 。l is aggregate = 16
+	bool is stateful = 17;
+	bool allows_u 口initialized_input = 19;
+}
+#OpDef 类型中前4 个属性定义了一个运算最核心的信息。Op Def 中的第一个属性name定义了运算的名称，这也是一个运算唯一的标识符。
 
+#流程：是一个嵌套的定义message
+message MetaGraphDef(meta_info_def)	
+	message MetaInfoDef(OpList stripped_op_list)
+		message OpDef(string name)
+			op(add)
 
+op {
+	name: "Add"
+	input_arg {
+		name: "X"
+		type_attr: "T"
+	}
+	input_arg {
+		name: "y"
+		type_attr: "T"
+	}
+	
+	output_arg {
+		name: "z"
+		type_attr: "T"
+	}
+	attr {
+		name: "T"
+		typr: "type"
+		allowed_values {
+			list {
+				type: DT_HALF
+				type: DT_FLOAT
+				}
+			}
+		}
+	}
 
+#graph_def记录计算图上的节点信息，graph_def属性只关注运算的连接结构
+message GraphDef {
+	repeated NodeDef node = 1;
+	VersionDef version = 4;
+}
+message NodeDef {#存储节点主要信息
+	string name = 1;#节点唯一标识符
+	string op = 2;#运算方法
+	repeated string input = 3;#字符串列表，定义输入
+	string devive = 4;#定义运算设备
+	map<string, AttrValue> attr = 5;
+};
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+import tensorflow as tf
+reader = tf.NewCheckpointReader('/path/to/model/model.ckpt')
+#读取checkpoint文件中保存的所有变量
+global_variables = reader.get_variable_to_shape_map()
+for variable in global_variables:
+	print(variable_name, global_variables[variable_name])
+print"value for variable v1 is", reader.get_tensor("v1")
+#输出：
+v1[1]
+v2[1]
+Value for variable vl is [l.] #变量vl的取值为1。
 
 
 
