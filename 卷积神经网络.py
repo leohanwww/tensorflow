@@ -20,7 +20,7 @@ weights = tf.get_variable(
     initializer=tf.truncated_normal_initializer(stddev=0.1))
 biases = tf.get_variable(
     'biases',[16],
-    initializer=tf.constant(0.1))
+    initializer=tf.constant_initializer(0.1))
 
 conv = tf.nn.conv2d(input, weights,strides=[1,1,1,1],padding='SAME')
 conv_bias = tf.nn.bias_add(conv, biases)#给每个节点加上偏置的函数，不能直接加
@@ -109,7 +109,7 @@ def inference(input_tensor,train,regularizer):
             'weight',[nodes,FC_SIZE],
             initializer=tf.truncated_normal_initializer(stddev=0.1))
 #只有全连接层的权重需要加入正则化
-        if regularizer !=None:
+        if regularizer != None:
             tf.add_to_collection('losses',regularizer(fc1_weights))
         fc1_biases = tf.get_variable(
             'bias',[FC_SIZE],
