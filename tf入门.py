@@ -5,7 +5,7 @@ import tensorflow as tf
 a = tf.constant([1.0, 2.0], name =”a ”)
 b = tf.constant([2.0, 3.0], name =”b ”)
 result = a + b
-Tensor Flow 会自动将定义的计算转化为计算图上的节点。在TensorFlow 程序中，系统会自
+TensorFlow会自动将定义的计算转化为计算图上的节点。在TensorFlow 程序中，系统会自
 动维护一个默认的计算图，通过tf.get_default_graph 函数可以获取当前默认的计算图。
 
 g1 = tf.Graph()#通过tf.Graph函数来生成新的计算图。不同计算图上的张量和运算都不会共享
@@ -14,7 +14,7 @@ with g1.as_default():
 	v = tf.get_variable(
 		"v", initializer=tf.zeros([1,]))
 
-g2 = tf.Graph()
+g2 = tf.Graph()#又一个计算图
 with g2.as_default():
 	v = tf.get_variable(
 		"v", initializer=tf.ones([1,])#设置初始值为1维的1
@@ -32,9 +32,19 @@ with tf.Session(graph=g2) as sess:
 		print(sess.run(tf.get_variable("v")))
 >>> [1.]
 
+tensorflow维护的集合
+tf.GraphKeys.VARIABLES 所以变量
+tf.GraphKeys.TRAINABLE_VARIABLES 可学习变量
+tf.GraphKeys.SUMMARIES 日志张量
+tf.GraphKeys.QUEUE_RUNNERS 
+tf.GraphKeys.MOVING_AVERAGE_VARIABLES 所有计算了滑动平均值的变量
+
+
 
 张量
-可以简单理解为多维数组
+Tensor("add_2:0", shape=(2,), dtype=float32)
+张量三个属性:name(node:src_output),shape,type 
+add_2(节点名称):0(此节点输出的第几个结果)
 
 import tensorflow as tf
 # tf.constant 是一个计算，这个计算的结果为一个张量， 保存在变量a 中。
@@ -55,7 +65,7 @@ Tensorflow中的张量和Numpy里的数组有区别，TF计算的结果是一个
 会话拥有并管理TensorFlow 程序运
 行时的所有资源。所有计算完成之后需要关闭会话来帮助系统回收资源
 sess = tf.Session()
-sess.run(...)
+sess.run(result)
 sess.close()
 使用上下文管理器
 with tf.Session() as sess:
@@ -67,17 +77,28 @@ with sess.as_default():
 	print (result.eval())
 [2. 4.]
 
+tensorflow自动生成一个默认计算图,不指定计算图的运算会自动加入默认运算图
+sess = tf.Session()
+with sess.as_default():
+	print(result.eval())
+或者
+sess = tf.Session()
+print(sess.run(result))
+print(result.eval(session=sess))
+
 交互式环境里可以使用：
->>>sess = tf.InteractiveSession()#通过设置默认会话的方式来获取张量的取值
+>>>sess = tf.InteractiveSession()#自动注册为默认会话
 >>>print(result.eval())
 >>>sess.close()
 通过tf.InteractiveSession 函数可以省去将产生的会话注册为默认会话的过程
 
-config = tf.ConfigProto(allow soft placement=True,log_device_placement=True)
+config = tf.ConfigProto(
+		allow soft placement=True,#参数为自动调整在cpu和gpu上运行
+		log_device_placement=True)#日志记录每个节点被安排在哪个设备上
 #设置运行session的参数
 #注册为默认会话，第一个参数为True可以自动调整运行在cpu或gpu上
 sessl = tf.InteractiveSession(config=config)
-sess2 = tf.Session(config=co nfig)
+sess2 = tf.Session(config=config)
 
 前向传播算法
 之所以称之为全连接神经网络是因为相邻两层之间任意两个节点之间都有连接
@@ -85,9 +106,9 @@ sess2 = tf.Session(config=co nfig)
 a = tf.matmul(x,w1) #相当于numpy里的dot操作
 y = tf.matmul(a,w2)
 
-weights = tf.Variable(tf.random_normal([2,3], stddec=2))#生成随机权重
+weights = tf.Variable(tf.random_normal([2,3], stddev=2))
 随机生成函数
-tf.random_normal	正态分布	参数：平均值，标准差，类型
+tf.random_normal	正态分布均值为0	参数：平均值，标准差，类型
 tf.truncated_normal		正态分布，如果随机值偏离平均值2个标准差，重新随机
 tf.random_uniform	均匀分布
 tf.random_gamma
@@ -97,10 +118,29 @@ tf.ones	tf.ones([2, 3] , int32) -> [[1 , 1 , 1) , [1 , 1 , 1))
 tf.fill	tf.fill([2, 3), 9) -> ((9, 9, 9) , (9 , 9, 9))
 tf.constant常数	tf.constant((1 , 2, 3)) -> (1 ,2,3)
 
-b = tf.Variable(tf.zeros([3]))
+b = tf.Variable(tf.zeros([3,]))
 w2 = tf.Variable(weights.initialized_value() * 2.0)
 
-import tensorf low as tf
+tf里的参数Variable需要初始化才能输出,
+此时需要
+sess=tf.InteractiveSession()
+sess.run(w2.initializer)#初始化此参数
+print(sess.run(w2))#然后才能输出数值
+全局初始化Variable
+init_op = tf.global_variables_initializer()
+sess.run(init_op)
+print(sess.run(w2))
+tf.Variable本身就是一个张量,需要初始化才能计算并输出
+tf.global_variables()#获取当前计算图所有变量
+tf.trainable_variables()#获取可学习变量
+
+w1 = tf.Variable(tf.random_normal([2,3],stddev=1),name='w1')
+w2= tf.Variable(tf.random_normal([2,3],stddev=1),name='w2')
+w1 = tf.assign(w2)#更新w1的值为w2的,维度一样
+w3 = tf.Variable(tf.random_normal([3,3],stddev=1),name='w3')
+tf.assign(w1,w3)会shape不匹配的错,tf.assign(w1,w3,validate_shape=False)
+
+import tensorflow as tf
 ＃声明wl 、w2 两个变盘。这里还通过seed 参数设定了随机种子，
 ＃这样可以保证每次运行得到的结果是一样的。
 wl = tf.Variable(tf.random_normal((2, 3) , stddev=l , seed=l))

@@ -1,24 +1,25 @@
 Tensoflow主要依赖包
 
 Protocol Buffer
-处理结构化数据工具
-使用Protocol Buffer 时需要先定义数据的格式（ schema ）还原一个序
+处理结构化数据工具（拥有多种属性的工具），将结构化数据转化为数据量（字符串），也能从数据流还原出结构化数据。
+序列化后是二进制流
+使用Protocol Buffer 时需要先定义数据的格式，tf自订的格式，还原一个序
 列化之后的数据将需要使用到这个定义好的数据格式
 message user{#每一个message 代表了一类结构化的数据
-	optional string name = 1 ;
-	required int32 id = 2 ;
+	optional string name = 1 ;#可选
+	required int32 id = 2 ;#必要
 	repeated string email = 3 ;#可重复的
 }
-TensorFlow 中的数据基本都是通过Protocol Buffer来组织的
+message会有实例，实例会继承message的属性，TensorFlow中的数据基本都是通过Protocol Buffer来组织的
 
-Bazel
+使用Bazel编译
 自动化构建工具，用来编译
 Bazel内含项目空间wokspace，可以解释为一个文件夹，包含了编译一个软件所需的源代码及输出编译结果
 在一个项目空间内， Bazel 通过BUILD 文件来找到需要编译的目标
 -rw-rw-r-- root root 208 BUILD
 -rw-rw-r-- root root 48 hello_lib.py
 -rw-rw-r-- root root 47 hello main.py
--rw-rw-r-- root root 0 WORKSPACE #外部依赖文件
+-rw-rw-r-- root root 0 WORKSPACE #定义了对外部资源的依赖关系
 
 #hello_lib.py
 def print_hello_world():
@@ -28,7 +29,7 @@ def print_hello_world():
 import hello_lib
 hello_lib.print_hello_world()
 
-在BULID文件中定义两个编译目标
+BULID文件：
 py_library(#定义函数的文件编译为library以供调用
 	name = "hello_lib",
 	src = [
@@ -68,112 +69,7 @@ windows		pip install tensorflow
 <tf.Tensor 'add:0' shape=(2,) dtype=float32>
 >>> tf.Session().run(result)
 array([3., 5.], dtype=float32)
-要输出相加得到的结果，不能简单地直接输出result ，而需要先生成一个会话（ session),
-并通过这个会话（ session ）来计算结果。到此，就实现了一个非常简单的TensorFlow 模型
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+要输出相加得到的结果，不能简单地直接输出result ，而需要先生成一个会话（session),
+并通过这个会话（session）来计算结果
 
 
