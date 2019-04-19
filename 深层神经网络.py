@@ -119,12 +119,11 @@ x = tf.placeholder(tf.float32,shape=(None,2))
 y_ = tf.placeholder(tf.float32,shape=(None,1))
 batch_size = 8
 #定义每层神经元个数
-layer_dimension = [2,10,10,10,1]
-layers_lenth = len(layer_dimension)
+layer_dimension = [2,10,10,10,1] 
 cur_layer = x
 in_dimension = layer_dimension[0]
 
-for i in(1,layers_lenth):
+for i in(1,len(layer_dimension)):
 	out_dimension = layer_dimension[i]#下一个输出层的节点个数
 	weight = get_weight((in_dimension,out_dimension),0.001)
     #获得权重
@@ -139,11 +138,11 @@ loss = tf.add_n(tf.get_collection('losses'))
 
 滑动平均模型
 使得模型在测试数据上更加健壮robust
-v1 = tf.Variable(0, dtype=tf.float32)
-step = tf.Variable(0, trainable=False)#迭代轮数
+v1 = tf.Variable(0, dtype=tf.float32)#设置这个值以后让滑动平均来更新
+step = tf.Variable(0, trainable=False)#模拟一个模型的迭代轮数
 #滑动平均的类，参数是衰减率和动态控制衰减率的变量
 ema = tf.train.ExponentialMovingAverage(0.99, step)
-#定义一个列表，里面保存更新平滑平均的操作
+#定义一个列表，里面保存要应用滑动平均的参数
 maintain_averages_op = ema.apply([v1])
 
 with tf.Session() as sess:
@@ -153,7 +152,7 @@ with tf.Session() as sess:
 print(sess.run([v1,ema.average(v1)]))
 >>>[0.0, 0.0]#初始都为0
 
-sess.run(tf.assign(v1, 5))#更新v1的值为5
+sess.run(tf.assign(v1, 5))#更新参数v1的值为5
 sess.run(maintain_averages_op)
 sess.run([v1, ema.average(v1)])
 >>>[5.0, 4.5]#v1和它的滑动平均值
@@ -161,6 +160,8 @@ sess.run([v1, ema.average(v1)])
 sess.run(tf.assign(step,10000))
 sess.run(tf.assign(v1,10))
 sess.run(maintain_averages_op)
+#更新vl 的滑动平均值。衰减率为min{0.99, (l+step)/(lO+step)}=0.99 ,
+#所以vl 的滑动平均会被更新为0.99x4.5+0.0lxl0=4.555 。
 sess.run([v1, ema.average(v1)])
 >>>[10.0, 4.5549998]
 
