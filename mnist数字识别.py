@@ -26,7 +26,7 @@ INPUT_NODE = 784 #输入层的节点数
 OUTPUT_NODE = 10 #输出层的节点数
 
 LAYER1_NODE = 500 #一个隐藏层，有500节点
-BATCH_SIZE= 100
+BATCH_SIZE = 100
 
 LEARNING_RATE_BASE = 0.8 #基础学习率
 LEARNING_RATE_DECAY = 0.99 #学习率的衰减
@@ -51,23 +51,24 @@ def train(mnist):
 	biases1 = tf.Variable(tf.constant(0.1,shape=[LAYER1_NODE]))
 	weights2 = tf.Variable(tf.truncate_normal(LAYER1_NODE,OUTPUT_NODE),stddev=0.1)
 	biases2 = tf.Variable(tf.constant(0.1,shape=[OUTPUT_NODE]))
-	y = inference(x, None, weights1, biases1, weights2, biases2)
+	y = inference(x, None, weights1, biases1, weights2, biases2)#前向推导
 
+	#开始实施滑动平均
 	global_step = tf.Variable(0, trainable=False)#训练轮数
 	variable_averages = tf.train.ExponentiaMovingAverage(MOVING_AVERAGE_DECAY,global_step)#滑动平均类实例化
-	
-	variable_averages_op = variable_averages.apply(tf.train_variables())
+	variable_averages_op = variable_averages.apply(tf.trainable_variables())
 	#在所有可训练参数上使用滑动平均
-	average_y = inference(x, variable_averages, weights1, biases1, weights2, biases2)#前向计算
+	average_y = inference(x, variable_averages, weights1, biases1, weights2, biases2)#带滑动平均的前向计算
 
-	#交叉嫡损失函数
+	#交叉嫡损失函数，分类问题只有一个答案使用这个加速函数
 	cross_entropy = tf.nn.sparse_softmax_with_logits(logits=y, labels=tf.argmax(y_,1))#1代表只在第一个维度，即每行取最大值的下标
-	cross_entropy_mean = tf.reduce_mean(cross_entropy)
+	cross_entropy_mean = tf.reduce_mean(cross_entropy)#计算所有batch的交叉嫡平均值
+	
 	#L2正则化损失函数
-	regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RETE)
-	#正则化损失
+	regularizer = tf.contrib.layers.l2_regularizer(REGULARIZATION_RATE)
+	#一般只计算网络边上的权重，不计算偏置
 	regularization = regularizer(weights1) + regularizer(weights2)
-	loss = cross_entropy_mean + regularization#总损失
+	loss = cross_entropy_mean + regularization#总损失=不带滑动平均的loss+滑动平均后的参数
 
 	learning_rate = tf.train.exponential_decay(#指数衰减学习率
 		LEARNING_RATE_BASE,#基础学习率
@@ -75,21 +76,23 @@ def train(mnist):
 		mnist.train.num_examples / BATCH_SIZE, #所有训练数据学完需要的迭代次数
 		LEARNING_RATE_DECAY #学习衰减率
 
-
-train_step = tf.train.GradientDecentOptimizer(learning_rate).minimize(loss,global_step=global_step)#优化损失函数
-#每过一遍数据要通过反向传播更新参数值
-#也要平滑计算参数
-#train_op = tf.group(train_step,variable_averages_op)和下面一样效果
+#使用优化算法（学习率指数衰减法）优化损失函数（已经正则化）
+train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step)
+#在训练中，每过一遍数据要通过反向传播更新参数值
+#也要更新每一个参数的滑动平均值
+#tf提供了tf.control_dependencies和tf.group两种机制
+#train_op = tf.group(trian_step,variable_averages_op)
 with tf.control_dependencies([train_step,variable_averages_op]):
 	train_op = tf.no_op(name='train')
 
-correct_prediction = tf.equal(tf.argmx(average_y,1), tf.argmax(y_, 1))
-#检验滑动平均模型前向传播结果正确,结果是一个batch_size的一维数组
+#前向传播准确率的计算
+correct_prediction = tf.equal(tf.argmx(average_y, 1), tf.argmax(y_, 1))
+#选取每行最大对应的下标，equal返回true或者false,结果是一个batch_size的一维数组
 accuracy = tf.reduce_mean(tf.cast(correct_prediction, tf.float32))
-#将布尔型转换为实数型，计算均值
+#cast将布尔型转换为float32，然后计算均值
 
 with tf.Session() as sess:
-	tf.global_variable_initializer().run
+	sess.run(tf.global_variable_initializer())
 	validate_feed = {#验证数据
 		x: mnist.validation.images,
 		y_: mnist.validation.labels
@@ -102,12 +105,12 @@ with tf.Session() as sess:
 
 	for i in range(TRAINING_STEPS):
 		if i % 1000 == 0
-			validate_acc = sess.run(accuracy, feed_dict=validate_feed)
+			validate_acc = sess.run(accuracy, feed_dict=validate_feed)#使用滑动平均的正确率
 			print('after %d training steps, validation accuracy using average model is %g' % (i, validate_acc))
 		#产生这一轮使用的一个batch的训练数据，并进行训练
 		xs,ys = mnist.train.next_batch(BATCH_SIZE)
 		sess.run(train_op, feed_dict={x:xs, y_:ys})
-	#训练结束后，在测试数据是检测最终正确率
+	#训练结束后，在测试数据上检测最终正确率
 	test_acc = sess.run(accuracy, feed_dict=test_feed)
 	print('arter %d training steps, test accuracy using average model is %g' % (TRAINING_STEPS, test_acc))
 
@@ -118,10 +121,12 @@ def main():
 if __name__ == '__main__'
 	tf.app.run()
 
+
+
 变量管理
 
 tf.Variable和tf.get_variable一样
-tf.Variable(tf.constant(0.1,shape=[1]),name='v')#name不是必须
+tf.Variable(tf.constant(0.1,shape=[1]),name='v')
 tf.get_variable("v",shape=[1],initializer=tf.constant_initilizer(1.0))#name必须
 
 tf.get_variable里的参数
@@ -139,14 +144,15 @@ with tf.variable_scope('foo'):#在命名空间里创建变量
 with tf.variable_scope('foo',reuse=True):#使用reuse只能获得已经存在变量，想新获得一个不存在的变量会报错
 	tf.get_variable('v',[1])
 
-v1 = tf.variable('v',[1])
-print v1.name #v:0
-with tf.variable_scope('foo')
-	v2 = tf.get_variable('v',[1])
-	print v2.name #foo/v:0
-v3 = tf.get_variable('foo/v',[1])
-print v3.name #/foo/v:0
-v3 == v2 #True
+    v1 = tf.get_variable('v',[1])
+    print v1.name #v:0,因为reuse为True，所以v1和v是相同的
+	
+tf.variable_scope控制tf.get_variable函数的语义，当variable_scope里的reuse为True时，
+tf.get_variable只能获得已存在的变量，变量不存在的话不能创建，而会报错。
+当reuse设置为False的时候，tf.get_variable将创建新的变量，如果同名的变量已经存在，将会报错。
+
+with tf.variable_scope('', reuse=True):
+    v5 = tf.get_variable('foo/bar/v', [1])#通过命名空间变量名称，获取其他命名空间下的变量
 
 def inference(input_tensor,reuse=False):
 	
