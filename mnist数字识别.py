@@ -142,8 +142,6 @@ initializer=tf.constant_initilizer 常量
 with tf.variable_scope('foo'):#在命名空间里创建变量
 	tf.get_variable('v',[1],initializer=tf.constant_initializer(1.0))
 with tf.variable_scope('foo',reuse=True):#使用reuse只能获得已经存在变量，想新获得一个不存在的变量会报错
-	tf.get_variable('v',[1])
-
     v1 = tf.get_variable('v',[1])
     print v1.name #v:0,因为reuse为True，所以v1和v是相同的
 	
@@ -174,47 +172,40 @@ new_x = ......
 y = inference(new_x,True)
 
 
-保存模型
-vl = tf.variable(tf.constant(1.0 , shape=[l]), name = ” vl ”)
-v2 = tf .variable(tf.constant(2.0 , shape=[l]) , name= ” v2 ”)
+模型持久化
+vl = tf.variable(tf.constant(1.0))
+v2 = tf .variable(tf.constant(2.0))
 result = vl + v2
 init_op = tf.global_variable_initializer()
 saver = tf.train.Saver()
 with tf.Session() as sess:
 	sess.run(init_op)
 	saver.save(sess,"/path/to/model/model.ckpt")
+	
+保存的第一个文件是model.ckpt.meta它保存了计算图的结构，第二个文件是model.ckpt,这个文件保存了每一个变量的取值，最后一个checkpoint文件保存了目录下所有模型文件的列表
+
 #加载模型
 with tf.Session() as sess:
 	sess.restore(sess,'/path/to/model/model.ckpt')
 	print(sess.run(result))
 
-v1 = tf.Variable(..., name='v1')
-v2 = tf.Variable(..., name='v2')
-# Pass the variables as a dict:
-saver = tf.train.Saver({'v1': v1, 'v2': v2})
-# Or pass them as a list.
-saver = tf.train.Saver([v1, v2])
-# Passing a list is equivalent to passing a dict with the variable op names
-# as keys:
-saver = tf.train.Saver({v.op.name: v for v in [v1, v2]})
-
-'''
-#直接加载图
+#硬盘里已经有了保存了的模型，可以直接加载计算图结构
 saver = tf.train.import_meta_graph('/path/to/model/model.ckpt/model.ckpt.meta')
 with tf.Session():
 	saver.restore(sess,'/path/to/model/model.ckpt')
 	print(sess.run(tf.get_default_graph().get_tensor_by_name('add:0')))
-'''
-#为了保存或加载部分变量
+
+#保存或加载部分变量
 saver = tf.train.Saver([v1])
-此时v2没有被加载，在运行初始化之前没有值
+此时v2没有被加载，在运行初始化init_op之前没有值
 #声明新的变量名（不在已保存的模型中）
-vl = tf.Variable(tf.constant(1.0 , shape=[l]) , name=”other-vl”)
-v2 = tf.Variable(tf.constant(2.0 , shape=[l]) , name =”other-v2”)
+vl = tf.Variable(tf.constant(1.0, shape=[l]), name=”other-vl”)
+v2 = tf.Variable(tf.constant(2.0, shape=[l]), name=”other-v2”)
 #使用一个字典来重命名变量可以就可以加载原来的模型了。这个字典指定了
 #原来名称为vl 的变量现在加载到变量vl 中（名称为other-v1 ），名称为v2 的变量加载到变量v2 中〈名称为other-v2 ）
-saver= tf.train.Saver ({"vl":vl, "v2":v2})#此时保存的模型里v1变量是‘other-v1’的值
+saver= tf.train.Saver ({"vl":vl, "v2":v2})#此时加载的v1变量是原来已保存的v1的值
 
+获取滑动平均变量其实就是获取它的影子变量的值
 import tensorflow as tf
 
 v = tf.Variable(0, dtype=tf.float32, name='v')
@@ -227,44 +218,57 @@ ema = tf.train.ExponentialMovingAverage(0.99)
 maintain_average_op = ema.apply(tf.global_variables())
 for variable in tf.global_variables():
 	print variable.name
-#输出v:0和v:/ExponentiaMovingAverage:0，后一个是影子变量
+#输出v:0和v:/ExponentiaMovingAverage:0
 
 saver = tf.train.Saver()
 with tf.Session() as sess:
 	init_op = tf.global_variable_initializer()
 	sess.run(init_op)
 	
-	sess.run(tf.assign(v,10))#给s一个新的值
+	sess.run(tf.assign(v,10))#给v一个新的值
 	sess.run(maintain_average_op)
-	saver.save(sess,'path/to/the/model/model/ckpt')#此时已经保存了v的两个值了
+	saver.save(sess,'/model/model.ckpt')#保存了v:0和v/ExponentialMovingAverage:0两个变量
 	print(sess.run([v, ema.average(v)]))
 #输出[10.0, 0.99999905]
 
+#通过变量重命名直接读取变量的滑动平均值
 v = tf.Variable(0, dtype=tf.float32, name='v')
-saver = tf.train.Saver({'v/ExponentiaMovingAverage':v})#变量重命名，将原来变量v的滑动平均值ema直接赋值给v
+saver = tf.train.Saver({'v/ExponentiaMovingAverage':v})#变量重命名，将原来变量v的滑动平均值ema直接赋值给现在的v
 with tf.Session() as sess:
-	saver.restore(sess, 'path/to/the/model/model/ckpt')
+	saver.restore(sess, '/model/model.ckpt')
 	print(sess.run(v))
 #输出0.9999905，已经只有滑动平均值了，因为前面只使用了ema的值赋值给v
 
-使用variable_to_restore()
+使用variable_to_restore()生成tf.train.Saver类所需要的变量重命名字典
 import tensorflow as tf
-v = tf.Variable(0, dtype=tf.float32 , name=”v ”)
+v = tf.Variable(0, dtype=tf.float32, name=”v ”)
 ema = tf.train.ExponetialMovingAverage(0.99)
-#通过使用variables to restore 函数可以直接生成上面代码中提供的字典
-#｛ ” v/ExponentialMovingAverage ”： v ｝。
-#会输出：
-#{ ’ v/ExponentialMovingAverage ’: <tensorflow . Variable ’ v : 0 ’ shape=() dtype=float32 ref>}
-#其中后面的Variable 类就代表了变量v 。
-print ema.variables_to_restore()
-
+print ema.variables_to_restore()#输出v/ExponentiaMovingAverage':<tensorflow . Variable ’ v : 0 ’ shape=() dtype=float32 ref>}
 saver = tf.train.Saver(ema.variables_to_restore())
 with tf.Session() as sess:
-	saver.restore(sess ,”/path/to/model/model.ckpt”)
+	saver.restore(sess, ”/model/model.ckpt”)
 	print sess.run(v) #输出0.099999905 ，即原来模型中变量v 的滑动平均值。
 
+使用convert_variables_to_constants函数，将计算图中的变量及其取值通过常量的方式保存
+这样可以将计算图统一放在一个文件中
+import tensorflow as tf
+from tensorflow.python.framework import graph_util
+vl = tf.Variable(tf.constant(1.0, shape=[l]), name=”vl”)
+v2 = tf.Variable(tf.constant(2.0, shape=[l]), name=”v2”)
+result = vl + v2
+init_op = tf.global_variables_initializer()
+with tf.Session() as sess:
+    sess.run(init_op)
+#导出当前计算图的GraphDef 部分，只需要这一部分就可以完成从输入层到输出层的计算过程。
+    graph_def = tf.get_default_graph().as_graph_def()
+#将图中变量转化为常量
+    output_graph_def = graph_util.convert_variables_to_constants(sess, graph_def, ['add'])
+#add是需要保存的节点，之前的节点不保存
+with tf.gfile.GFile('/model/combined_model.pb','wb') as f:#将导出的模型存入文件
+    f.write(output_graph_def.SerializeToString())
+
 持久化数据格式
-元图 元图是由MetaGraphDef Protocol Buffer 定义的
+元图是由MetaGraphDef Protocol Buffer 定义的
 message MetaGraphDef {
 	MetainfoDef meta_info_def = 1 ;
 	
@@ -273,7 +277,7 @@ message MetaGraphDef {
 	map<string, CollectionDef> collection_def = 4 ;
 	map<string, SignatureDef> signature_def = 5 ;
 	repeated AssetFileDef asset_file_def = 6 ;
-}
+}#元图记录了6类信息
 
 v1 = tf.Variable(tf.constant(1.0, shape=[1]), name='v1')
 v2 = tf.Variable(tf.constant(1.0, shape=[1]), name='v2')
@@ -283,8 +287,8 @@ saver.export_meta_graph('/path/to/model.ckpt.meda.json', as_text=True)
 #将上一部分保存的model.ckpt.meta计算元图导出为json文件
 
 #meta_info_def属性是通过MetalnfoDef 定义的，它记录了TensorFlow 计算图中的元数据以及TensorFlow程序中所有使用到的运算方法的信息。
-message MetainfoDef {
-	string meta_graph_version = 1;
+message MetaInfoDef {
+	string meta_graph_version = 1;#版本号
 	OpList stripped_op_list = 2;#记录所有计算方法，每个方法只出现一次
 	google.protobuf.Any any_info = 3;
 	repeated string tags = 4;
@@ -294,7 +298,7 @@ message MetainfoDef {
 
 #上面stripped_op_list的方法中的一种
 message OpDef {
-	string name = l ;
+	string name = l ;#运算的名称
 	repeated ArgDef input arg = 2;
 	repeated ArgDef output_arg = 3;
 	repeated AttrDef attr = 4;
@@ -307,19 +311,13 @@ message OpDef {
 	bool is stateful = 17;
 	bool allows_u 口initialized_input = 19;
 }
-#OpDef 类型中前4 个属性定义了一个运算最核心的信息。Op Def 中的第一个属性name定义了运算的名称，这也是一个运算唯一的标识符。
+#OpDef 类型中前4 个属性定义了一个运算最核心的信息。Op_Def 中的第一个属性name定义了运算的名称，这也是一个运算唯一的标识符。
 
-#流程：是一个嵌套的定义message
-message MetaGraphDef(meta_info_def)	
-	message MetaInfoDef(OpList stripped_op_list)
-		message OpDef(string name)
-			op(add)
-
-op {
+op {#上面string name定义的8种之一
 	name: "Add"
 	input_arg {
 		name: "X"
-		type_attr: "T"
+		type_attr: "T"#必须为T
 	}
 	input_arg {
 		name: "y"
@@ -340,20 +338,24 @@ op {
 				}
 			}
 		}
-	}
+	}		
+		
 
-#graph_def记录计算图上的节点信息，graph_def属性只关注运算的连接结构
+
+#graph_def包含计算图所有节点的具体信息
 message GraphDef {
 	repeated NodeDef node = 1;
 	VersionDef version = 4;
 }
 message NodeDef {#存储节点主要信息
-	string name = 1;#节点唯一标识符
+	string name = 1;#一个节点的唯一标识符
 	string op = 2;#运算方法
 	repeated string input = 3;#字符串列表，定义输入
 	string devive = 4;#定义运算设备
 	map<string, AttrValue> attr = 5;
 };
+
+
 
 import tensorflow as tf
 reader = tf.NewCheckpointReader('/path/to/model/model.ckpt')
@@ -368,7 +370,8 @@ v2[1]
 Value for variable vl is [l.] #变量vl的取值为1。
 
 
-
+完整的程序见目录下
+mnist_train
 
 
 

@@ -96,7 +96,7 @@ tf.train.exponential_decay是指数衰减法，在开始用大学习率快速减
 decayed_learning_rate = learning_rate * decay_rate ^ (global_step / decay_steps)
 exponential_decay(learning_rate, global_step, decay_steps, decay_rate, staircase=False, name=None)
 #decay_steps通常代表了完整的使用一遍训练数据所需要的迭代轮数。这个迭代轮数也就是总训练样本数除以每一个batch 中的训练样本数(train_data_size / batch_size)也就是epoch
-global_step = tf.Variable(0)#设置global_step为一个可学习的参数
+global_step = tf.Variable(0, trainable=False)#这个参数可以随着学习不断自加1
 learning_rate = tf.train.exponential_decay(0.1, global_step, 100, 0.96, staircase=True)
 #在minimize函数中传入global_step将自动更新，从而学习率也将得到相应更新
 train_step = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step)
