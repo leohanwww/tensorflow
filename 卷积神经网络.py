@@ -3,32 +3,35 @@
 每两层之间所有节点都是相连的，称为全连接层
 使用全连接处理图像28X28X500+500=392500个参数，参数太多，计算缓慢，容易过拟合
 我们可以将卷积层和池化层看成自动图像特征提取的过程。在特征提取完成之后，仍然需要使用全连接层来完成分类任务。
+CIFAR-10图片大小为32x32x3
 卷积层1	池化层1	卷积层2	池化层2	全连接层1		全连接层2		softmax		分类结果
 
-卷积结果计算公式
+为了使得卷积前向传播矩阵大小不变,可以使用全0填充
 使用全0填充 'SAME'
-out = celi(in / stride)
+out.shape = celi(in / stride)
 不使用全0填充 'VALID'
-out = (in - filter + 1) / stride
+out.shape = (in - filter + 1) / stride
 
 输入层维度是32 32 3 卷积层维度是5 5 16 卷积层参数个数是5*5*3*16+16=1216个
 且卷积层的参数个数和图片的大小无关，它只和过滤器的尺寸、深度以及当前
 层节点矩阵的深度有关。这使得卷积神经网络可以很好地扩展到更大的图像数据上。
 
+#过滤器尺寸
 weights = tf.get_variable(
     'weights',[5,5,3,16],
     initializer=tf.truncated_normal_initializer(stddev=0.1))
 biases = tf.get_variable(
     'biases',[16],
     initializer=tf.constant_initializer(0.1))
-
+input_tensor = [n,x,y,c]
 conv = tf.nn.conv2d(input, weights,strides=[1,1,1,1],padding='SAME')
+#strides=[1,1,1,1]最前最后两位为固定的1,中间两位是步幅
 conv_bias = tf.nn.bias_add(conv, biases)#给每个节点加上偏置的函数，不能直接加
 actived_conv2d = tf.nn.relu(conv_bias)
 
 池化层
 tf.nn.max_pool(actived_conv2d,ksize=[1,3,3,1],strides=[1,2,2,1],padding='SAME')
-#ksize是过滤器大小
+#ksize是过滤器大小,第一和最后一个数字为1,中间是过滤器大小
 tf.nn.avg_pool(...)
 
 
