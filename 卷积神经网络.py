@@ -36,17 +36,22 @@ tf.nn.avg_pool(...)
 
 
 LeNet-5模型
+具有7层的卷积网络
+# -*- coding: utf-8 -*-
+import tensorflow as tf
 
-x = tf.placeholder(tf.float32,
+input_tensor = tf.placeholder(tf.float32,
     [batch_size,
     mnist_inference.IMAGE_SIZE,
     mnist_inference.IMAGE_SIZE,
     mnist_inference.NUM_CHANNELS]
     name='x-input'
-y_ = tf.placeholder(tf.float32,[None,mnist_inference.OUTPUT_NODE],name='y-input')
+output = tf.placeholder(tf.float32,[None,mnist_inference.OUTPUT_NODE],name='y-input')
 
-#-*- coding:utf-8 -*-
-import tensorflow as tf
+reshaped_xs = np.reshape(xs, [BATCH_SIZE,
+								mnist_inference.IMAGE_SIZE,
+								mnist_inference.IMAGE_SIZE,
+								mnist_inference.NUM_CHANNELS])
 
 #神经网络参数
 INPUT_NODE=784
@@ -99,13 +104,11 @@ def inference(input_tensor,train,regularizer):
     with tf.variable_scope('layer4-pool'):
         pool2 = tf.nn.max_pool(relu2,ksize=[1,2,2,1],stride=[1,2,2,1],padding='SAME')
 
-#第五层是全连接层，把上一层7x7x64展开为向量，输出为长度512的向量
-    pool_shape = pool2.get_shape().as_list()
-#node为向量长度
-    nodes = pool_shape[1] * pool_shape[2] * pool_shape[3]
-#pool[0]为batch数量,展开为向量
-    reshaped = tf.reshape(pool2, [pool_shape[0], nodes])
-#或者reshape(pool2,[-1,nodes])
+#第五层是全连接层，把上一层7x7x64的tensor拉直成为一个向量
+    pool_shape = pool2.get_shape().as_list()#这个方法从tensor获得shape
+    nodes = pool_shape[1] * pool_shape[2] * pool_shape[3]#7x7x64长度
+    reshaped = tf.reshape(pool2, [pool_shape[0], nodes])#pool_shape[0]是batch_size
+
 
     with tf.variable_scope('layer5-fc1'):
         fc1_weights = tf.get_variable(
@@ -116,7 +119,7 @@ def inference(input_tensor,train,regularizer):
             tf.add_to_collection('losses',regularizer(fc1_weights))
         fc1_biases = tf.get_variable(
             'bias',[FC_SIZE],
-            initializer=tf.constant_initializer(0.1)
+            initializer=tf.constant_initializer(0.1))
         fc1 = tf.nn.relu(tf.matmul(reshaped,fc1_weights) + fc1_biases)
         if train: fc1 = tf.nn.drop(fc1, 0.5)
 #dropout层一般只在全连接层使用，dropout在训练时随机将部分节点的输出改为0，可以避免过拟合问题
@@ -130,32 +133,34 @@ def inference(input_tensor,train,regularizer):
             tf.add_to_collection('losses',regularizer(fc2_weights))
         fc2_biases = tf.get_variable(
             'bias',[NUM_LABELS],
-            initializer=tf.constant_initializer(0.1)
+            initializer=tf.constant_initializer(0.1))
         logit = tf.matmul(fc1,fc2_weights) + fc2_biases
     return logit
 
-以上是LeNet-5模型，通过串联卷积层
-Inception-v3模型，同时卷积边长为1，3，5的过滤器，然后把结果拼接
-利用tensorflow-slim简洁实现卷积层
-net = slim.conv2d(input,32,[3,3])#参数为输入节点、卷积层深度、过滤器尺寸
 
+
+Inception-v3模型，同时卷积边长为1，3，5的过滤器，使用全0填充,所有输出矩阵都与输入大小一致,然后把结果拼接
+利用tensorflow-slim简洁实现卷积层
 slim = tf.contrib.slim#加载slim库
+net = slim.conv2d(input,32,[3,3])#参数为输入节点、卷积层深度、过滤器尺寸
+#设置默认参数取值,第一个参数是一个函数列表,列表中的函数使用第二个,第三个,第四个参数
 with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],  stride=1,padding='VALID'):
     #省略前面的推导过程，到最后一步推导
-    net = 上一层的输出
-    #为一个Inception模块声明一个统一的变量命名空间
-    with tf.variable_scope('Mixed_7c'):#第一条路径，过滤器边长为1，深度为320的卷积层
+    .......
+	.......
+	net = 上一层的输出
+    with tf.variable_scope('Mixed_7c'):#这是一个需要分别卷积然后叠加的大模块
+		#第一条路径，过滤器边长为1，深度为320的卷积层
         with tf.variable_scope('Branch_0'):
             branch_0 = slim.conv2d(net, 320, [1,1],scope='Conv2d_0a_1x1')
-    #第二条路径，这个结构本身也是一个Inception结构
+		#第二条路径，这个结构本身也是一个Inception结构
         with tf.variable_scope('Branch_1'):
             branch_1 = slim.conv2d(net,384,[1,1],scope='Conv2d_0a_1x1')
-    #使用tf.concat函数将多个矩阵拼接,第一个参数3是指在第三个维度，也就是深度上进行拼接
+		#使用tf.concat函数将多个矩阵拼接,第一个参数3是指在第三个维度，也就是深度上进行拼接
             branch_1 = tf.concat(3,[
                 slim.conv2d(branch_1,384,[1,3],scope='Conv2d_0b_1x3')
                 slim.conv2d(branch_1,384,[3,1],scope='Conv2d_0a_3x1'))
-
-    #第三条路径
+		#第三条路径
         with tf.variable_scope('Branch_2'):
             branch_2 = slim.conv2d(net,448,[1,1],scope='Conv2d_0a_1x1')
             branch_2 = slim.cov2d(branch_2,384,[3,3],scope='Conv2d_0b_3x3')
@@ -170,8 +175,7 @@ with slim.arg_scope([slim.conv2d, slim.max_pool2d, slim.avg_pool2d],  stride=1,p
 
 
 迁移学习
-普通学习无法有太多的标准答案和层数，迁移学习就是在一个问题上训练好的模型调整以适用新的问题
-最后一层全连接层之前的称为瓶颈层bottleneck，用瓶颈层对图像进行提取
+用训练好的inception-v3模型,将输出层前面的层(瓶颈层)提取,再通过一个单层全连接层
 
 
 
