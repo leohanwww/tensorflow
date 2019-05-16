@@ -145,32 +145,96 @@ model.fit(
 		validation_data=([testX, testY], [testY, testY]))
 
 
+Estimator
+
+#需要指定神经网络的输入层,所有这里指定的输入会拼接在一起作为整个神经网络的输入
+feature_columns = [tf.feature_column.numeric_column("image", shape=[784])]
+
+estimator = tf.estimator.DNNClassfier(#多个全连接层结构
+	feature_columns=feature_columns,
+	hidden_units=[500],#结构
+	n_classes=10,#类目
+	optimizer=tf.train.AdamOptimizer(),
+	model_dir="/path"#将训练过程中的loss变化及其他指标保存到此
+
+#定义训练时的数据输入
+train_input_fn = tf.estimator.inputs.numpy_input_fn(
+	x={"image": mnist.train.images},
+	y=mnist.train.labels.astype(np.int32),
+	num_epochs=None,
+	batch_size=128,
+	shuffle=True)
+	
+#训练模型
+estimator.train(input_fn=train_input_fn, steps=10000)
+
+#测试时数据输入
+test_input_fn = tf.estimator.inputs.numpy_input_fn(
+	x={"image": mnist.test.images},
+	y=mnist.test.labels.astype(np.int32),
+	num_epochs=1,
+	batch_size=128,
+	shuffle=False)
+	
+accuracy_score = estimator.evaluate(input_fn=test_input_fn)["accuracy"]
+print(accuracy_score)
 
 
+自定义estimator模型
 
+def lenet(x, is_trainning):#前向传播函数
+	......
+	return net
+	
+def model_fn(features, labels, mode, params):
+	#得到前向传播结果
+	predict = lenet(
+		features["image"], mode == tf.estimator.ModeKeys.TRAIN)
+	#如果在预测模式,只需返回结果
+	if mode == tf.estimator.ModeKeys.PREDICT:
+		return tf.estimator.EstimatorSpec(
+			mode=mode,
+			predictions={"result": tf.argmax(predict, 1)})
+	#自定义损失函数
+	loss = tf.reduce_mean(
+		tf.nn.sparse_softmax_cross_entropy_with_logits(
+			logits=predict, labels=labels))
+	#自定义优化函数
+	optimizer = tf.train.GradientDesentOptimaizer(
+		learning_rate=params["learning_rate"])
+	#定义训练过程
+	train_op = optimizer.minimize(
+		loss=loss, global_step=tf.train.get_global_step())
+	#定义验证
+	eval_metric_ops = {
+		"my_metric": tf.metrics.accuracy(
+			tf.argmax(predict, 1), labels)}
+	#返回模型训练使用的参数
+	return tf.estimator.EstimatorSpec(
+		mode=mode,
+		loss=loss,
+		train_op=train_op,
+		eval_metric=eval_metric_ops)
 
+#通过自定义方式生成Estimator类		
+model_params = {"learning_rate": 0.01}
+estimator = tf.estimator.Estimator(model_fn=model_fn, params=model_params)
 
+train_input_fn = ...
+estimator.train(input_fn=train_input_fn, steps=10000)
+test_input_fn = ...
+test_input_fn = ...
+test_results = estimator.evaluate(input_fn=test_input_fn)
+accuracy_score = test_results['metric']
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#使用训练过的数据在新数据上预测
+predict_input_fn = tf.estimator.inputs.numpy_input_fn(
+	x={'image': mnist.test.images},
+	num_epochs=1,
+	shuffle=False)
+predictions = estimator.predict(input_fn=predict_input_fn)
+fro i, p in enmuerate(predictions):
+	print('prediction %d: %s' % (i, p['result']))
 
 
 
