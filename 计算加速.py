@@ -41,3 +41,162 @@ def average_gradients(tower_grads):
 		grad_and_var = (grad, v)
 		average_grads.append(grad_and_var)
 	return average_grads
+	
+def main():
+		with tf.Graph().as_defult, tf.device('/cpu:0'):
+			x, y = get_input()
+			regularizer = tf.contrib.layers.l2_regularizer(REGULARIZERAZTION_RETE)
+			globel_step = tf.get_variable(
+				'global_step', [], initializer=tf.constant_initializer(0),
+				 trainable=False)
+			learning_rate = tf.train.exponential_dacay(
+				LEARNING_RATE_BASE,
+				global_step,
+				train_size / batch_size,
+				LEARNING_RATE_DECAY)
+			train_step = tf.train.GradientDescentOptimizer(learning_rate)
+			tower_grads = []
+			reuse_variables = False
+			for i in range(GPUs):
+				with tf.device('/gpu:%d' % i):
+					with tf.name_scope('GPU_%d' % i) as scope:
+						cur_loss = get_loss(
+							x, y_, regularizer, scope, reuse_variables)
+						reuse_variables = True
+						grads = train_step.compute_gradients(cur_loss)
+						tower_grads.append(grads)
+
+
+分布式tensorflow
+
+#创建本地tensorflow集群
+server = tf.train.Server.create_local_server()
+sess = tf.Session(server.target)
+
+#生成两个任务的集群
+c = tf.constant('hello from server1 !')
+cluster = tf.train.ClusterSpec(
+	{"local": ["localhost:8888", "localhost:8889"]})
+#通过集群配置生成server,参数指定当前启动任务
+server = tf.train.Server(cluster, job_name="local", task_index=0)
+sess = tf.Session(server.target, config=tf.ConfigProto(log_device_placement=True))
+sess.run(c)
+server.join()
+
+#第二个任务
+c = tf.constant('hello from server2 !')
+#集群中每个任务需要用相同配置
+cluster = tf.train.ClusterSpec(
+	{"local": ["localhost:8888", "localhost:8889"]})
+server = tf.train.Server(cluster, job_name="local", task_index=1)
+sess = tf.Session(server.target, config=tf.ConfigProto(log_device_placement=True))
+sess.run(c)
+server.join()
+启动第一个任务后会执行并等待第二个任务
+
+
+计算图之间分布式
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
